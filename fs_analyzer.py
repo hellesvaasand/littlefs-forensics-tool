@@ -2,7 +2,7 @@ from littlefs import LittleFS
 import subprocess
 import platform
 
-def list_files(image_path, block_size, block_count):
+def list_files(image_path, block_size=4096, block_count=16, read_size=16, prog_size=16):
     print("");
     print(f"Listing files in: {image_path}")
     print("")
@@ -12,7 +12,7 @@ def list_files(image_path, block_size, block_count):
 
     try:
         result = subprocess.run(
-            [list_tool, image_path, str(block_size), str(block_count)],
+            [list_tool, image_path, str(block_size), str(block_count), str(read_size), str(prog_size)],
             capture_output=True,
             text=True,
             check=True
@@ -25,13 +25,13 @@ def list_files(image_path, block_size, block_count):
         print(f"[!] Error running 'littlefs_list': {e.stderr}")
         
 
-def print_structures(image_path, block_size, block_count, dump_blocks=None):
+def print_structures(image_path, block_size=4096, block_count=16, read_size=16, prog_size=16, dump_blocks=None):
     print(f"Printing data-structure information from: {image_path}")
-
+    
     if dump_blocks is None:
         dump_blocks = 8
 
-    # Don't try to dump more blocks than exist
+    # Do not try to dump more blocks than exist
     if dump_blocks > block_count:
         print(f"[!] The filesystem has only {block_count} blocks, but you requested {dump_blocks}.")
         print(f"    Proceeding to dump {block_count} blocks instead.")
@@ -39,7 +39,7 @@ def print_structures(image_path, block_size, block_count, dump_blocks=None):
 
     try:
         result = subprocess.run(
-            ["./littlefs_struct", image_path, str(block_size), str(block_count), str(dump_blocks)],
+            ["./littlefs_struct", image_path, str(block_size), str(block_count), str(read_size), str(prog_size), str(dump_blocks)],
             capture_output=True,
             text=True,
             check=True
@@ -52,12 +52,12 @@ def print_structures(image_path, block_size, block_count, dump_blocks=None):
         print(f"[!] Error: {e.stderr}")
 
 
-def recover_deleted(image_path, block_size, block_count):
+def recover_deleted(image_path, block_size=4096, block_count=16, read_size=16, prog_size=16):
     print(f"Recovering deleted data from: {image_path}")
 
     try:
         result = subprocess.run(
-            ["./littlefs_recover", image_path, str(block_size), str(block_count)],
+            ["./littlefs_recover", image_path, str(block_size), str(block_count), str(read_size), str(prog_size)],
             capture_output=True,
             text=True,
             check=True

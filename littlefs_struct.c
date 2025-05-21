@@ -6,13 +6,17 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define READ_SIZE 16
-#define PROG_SIZE 16
 #define CACHE_SIZE 512
 #define LOOKAHEAD_SIZE 16
 
 uint8_t *image = NULL;
+int block_size = 4096;
+int block_count = 16;
+int read_size = 16; 
+int prog_size = 16;
+int dump_size = 8;
 bool *block_usage = NULL;
+typedef uint32_t lfs_tag_t;
 
 int user_read(const struct lfs_config *c, lfs_block_t block,
               lfs_off_t off, void *buffer, lfs_size_t size) {
@@ -63,17 +67,45 @@ void print_block_summary(int block_count) {
     printf("\n");
 }
 
+
+void decode_block_header(uint8_t *block_data) {
+    lfs_tag_t tag = *(lfs_tag_t *)block_data;
+    uint8_t type = tag & 0x3F;
+
+    switch (type) {
+        case 0x01:
+            printf("File entry");
+            break;
+        case 0x02:
+            printf("Directory entry");
+            break;
+        case 0x05:
+        case 0x06:
+            printf("Superblock");
+            break;
+        default:
+            printf("Unknown type");
+            break;
+    }
+}
+
+
 void dump_blocks(int block_size, int block_count) {
     printf("\nDumping first %d blocks:\n", block_count);
+
     for (int i = 0; i < block_count; i++) {
         printf("  Block %d: ", i);
         for (int j = 0; j < 16; j++) {
             printf("%02X ", image[i * block_size + j]);
         }
+        printf("  -->  ");
+        decode_block_header(&image[i * block_size]);
+        
         printf("...\n");
     }
     printf("\n");
 }
+
 
 void walk_dir(lfs_t *lfs, const char *path) {
     struct lfs_info info;
@@ -84,8 +116,7 @@ void walk_dir(lfs_t *lfs, const char *path) {
         return;
     }
 
-    printf("Filesystem contents:\n");
-    printf("DIR: %s\n", path);
+    printf("Directory: %s\n", path);
 
     while (lfs_dir_read(lfs, &dir, &info) > 0) {
         if (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0)
@@ -97,41 +128,79 @@ void walk_dir(lfs_t *lfs, const char *path) {
         if (info.type == LFS_TYPE_REG) {
             printf("  FILE: %s (Size: %lu)\n", full_path, (unsigned long)info.size);
         } else if (info.type == LFS_TYPE_DIR) {
+            printf("  DIR: %s\n", full_path);
             walk_dir(lfs, full_path);
         }
     }
     lfs_dir_close(lfs, &dir);
 }
 
+// Utility to read 32-bit little-endian values safely
+uint32_t read_le32(const uint8_t *ptr) {
+    return ((uint32_t)ptr[0]) |
+           ((uint32_t)ptr[1] << 8) |
+           ((uint32_t)ptr[2] << 16) |
+           ((uint32_t)ptr[3] << 24);
+}
+
+void print_superblock_info(uint8_t *image, int block_size) {
+    printf("Superblock (tag check in block 0 or 1):\n");
+
+    for (int block = 0; block <= 1; block++) {
+        const uint8_t *block_data = image + block * block_size;
+        uint32_t raw_tag = read_le32(block_data);
+        uint8_t tag_type = raw_tag & 0x3F;
+
+        if (tag_type == 0x05 || tag_type == 0x06) {
+            printf("  Superblock tag detected in block %d\n", block);
+            printf("  Raw tag: 0x%08X\n", raw_tag);
+            printf("  Tag type: 0x%02X (Superblock)\n", tag_type);
+            return;
+        }
+    }
+
+    printf("  [!] No valid superblock tag found in block 0 or 1.\n");
+}
+
+
 int main(int argc, char **argv) {
     if (argc < 4) {
-        fprintf(stderr, "Usage: %s <image_file> <block_size> <block_count> [dump_blocks]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <image_file> [block_size] [block_count] [read_size] [prog_size] [dump_blocks]\n", argv[0]);
         return 1;
     }
 
     const char *image_path = argv[1];
-    int block_size = atoi(argv[2]);
-    int block_count = atoi(argv[3]);
+    if (argc >= 3) {
+        block_size = atoi(argv[2]);
+    }
+    if (argc >= 4) {
+        block_count = atoi(argv[3]);
+    }
+    if (argc >= 5) {
+        read_size = atoi(argv[4]);
+    }
+    if (argc >= 6) {
+        prog_size = atoi(argv[5]);
+    }
+
+    if (argc >= 7) {
+        dump_size = atoi(argv[6]);
+        if (dump_size <= 0) {
+            fprintf(stderr, "[!] Invalid dump block count.\n");
+            return 1;
+        }
+    }
 
     if (block_size <= 0 || block_count <= 0) {
         fprintf(stderr, "[!] Invalid block size or block count.\n");
         return 1;
     }
 
-    // Set default dump count
-    int dump_block_count = 8;
-    if (argc >= 5) {
-        dump_block_count = atoi(argv[4]);
-        if (dump_block_count <= 0) {
-            fprintf(stderr, "[!] Invalid dump block count.\n");
-            return 1;
-        }
-    }
 
-    if (dump_block_count > block_count) {
-        printf("[!] The filesystem has only %d blocks, but %d were requested for dump.\n", block_count, dump_block_count);
+    if (dump_size > block_count) {
+        printf("[!] The filesystem has only %d blocks, but %d were requested for dump.\n", block_count, dump_size);
         printf("    Proceeding to dump %d blocks instead.\n", block_count);
-        dump_block_count = block_count;
+        dump_size = block_count;
     }
 
     FILE *f = fopen(image_path, "rb");
@@ -154,8 +223,8 @@ int main(int argc, char **argv) {
         .erase = user_erase,
         .sync  = user_sync,
 
-        .read_size = READ_SIZE,
-        .prog_size = PROG_SIZE,
+        .read_size = read_size,
+        .prog_size = prog_size,
         .block_size = block_size,
         .block_count = block_count,
         .cache_size = CACHE_SIZE,
@@ -163,6 +232,10 @@ int main(int argc, char **argv) {
         .block_cycles = -1
     };
 
+    printf("\n");
+    print_superblock_info(image, block_size);
+
+    printf("\n");
     printf("Filesystem configuration:\n");
     printf("  Block size: %d\n", cfg.block_size);
     printf("  Block count: %d\n", cfg.block_count);
@@ -182,7 +255,7 @@ int main(int argc, char **argv) {
 
     mark_used_blocks_by_content(block_size, block_count);
     print_block_summary(block_count);
-    dump_blocks(block_size, dump_block_count);
+    dump_blocks(block_size, dump_size);
 
     lfs_unmount(&lfs);
     free(image);
@@ -190,5 +263,5 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-// Compile with: gcc littlefs_struct.c lfs.c lfs_util.c -o littlefs_struct
-// Usage: ./littlefs_struct <image> <block_size> <block_count>
+// // Compile with: gcc littlefs_struct.c lfs.c lfs_util.c -o littlefs_struct
+// // Usage: ./littlefs_struct <image> <block_size> <block_count>

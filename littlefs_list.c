@@ -4,12 +4,14 @@
 #include <stdint.h>
 #include <string.h>
 
-#define READ_SIZE 16
-#define PROG_SIZE 16
 #define CACHE_SIZE 512
 #define LOOKAHEAD_SIZE 16
 
 uint8_t *image = NULL;
+int block_size = 4096;
+int block_count = 16;
+int read_size = 16;
+int prog_size = 16;
 
 int user_read(const struct lfs_config *c, lfs_block_t block,
               lfs_off_t off, void *buffer, lfs_size_t size) {
@@ -60,14 +62,24 @@ void walk_dir(lfs_t *lfs, const char *path) {
 
 int main(int argc, char **argv) {
     if (argc < 4) {
-        fprintf(stderr, "Usage: %s <image_file> <block_size> <block_count>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <image_file> [block_size] [block_count] [read_size] [prog_size]\n", argv[0]);
 
         return 1;
     }
 
     const char *image_path = argv[1];
-    int block_size = atoi(argv[2]);
-    int block_count = atoi(argv[3]);
+    if (argc >= 3) {
+        block_size = atoi(argv[2]);
+    }
+    if (argc >= 4) {
+        block_count = atoi(argv[3]);
+    }
+    if (argc >= 5) {
+        read_size = atoi(argv[4]);
+    }
+    if (argc >= 6) {
+        prog_size = atoi(argv[5]);
+    }
 
     if (block_size <= 0 || block_count <= 0) {
         fprintf(stderr, "[!] Invalid block size or block count.\n");
@@ -91,8 +103,8 @@ int main(int argc, char **argv) {
         .erase = user_erase,
         .sync  = user_sync,
 
-        .read_size = READ_SIZE,
-        .prog_size = PROG_SIZE,
+        .read_size = read_size,
+        .prog_size = prog_size,
         .block_size = block_size,
         .block_count = block_count,
         .cache_size = CACHE_SIZE,

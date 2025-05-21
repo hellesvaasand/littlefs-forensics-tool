@@ -1,12 +1,15 @@
-#  Setup & Usage
+# LitleFS Forensics Tool
 
-This README explains how to set up and use the CLI forensics tool for the LittleFS filesystem.
+A command-line forensic tool for analyzing and inspecting LittleFS filesystem images. Useful for embedded system development, debugging, and recovery tasks. 
+
+This README explains how to set up and use the tool. 
 
 ## Prerequisites
 
 - Python 3.7 or newer
 - Git (optional, for cloning the repository)
 - A LittleFS image file (e.g., `image.img`)
+- A C compiler (e.g., gcc)
 
 ---
 
@@ -14,10 +17,10 @@ This README explains how to set up and use the CLI forensics tool for the Little
 
 ### 1. Clone the repository
 
-You can either clone this project or download it as a ZIP: LINK!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+You can either clone this project or download it as a ZIP: https://github.com/hellesvaasand/littlefs-forensics-tool
 
 ```bash
-git clone https://github.com/your-username/littlefs-forensics-tool.git
+git clone https://github.com/hellesvaasand/littlefs-forensics-tool.git
 cd littlefs-forensics-tool
 ```
 
@@ -58,11 +61,19 @@ pip install -r requirements.txt
 Once the tool is installed, the tool can be run from the command line.
 
 ### LittleFS Images
+The tool can be used with existing images of a LittleFS filesystem (realistic usage for the tool), but the tool can also be used to create LittleFS images. This is useful for testing cases.
 
-The tool can be used with existing images of a LittleFS filesystem (realistic usage for the tool), but the tool can also be used to create LittleFS images. This is useful for testing cases. 
+#### Using Existing Images
+LittleFS images do **not** contain internal metadata about `block size`, `block count`, `read size` or `prog size`. These parameters must be provided manually, and they **must exactly match** the original configuration used when the image was created.
+
+If these values are incorrect, the tool will fail to mount or interpret the filesystem properly. Thus, to be able to use existing images, the user must know the values of `block size` and `block count`.
+
+Sources you can use to find this info:
+- Embedded firmware source code
+- Device datasheets
+- Image generation scripts or documentation
 
 #### How to Create Images
-
 The example below shows how to create a LittleFS image containing three files where one of them is in a nested directory. 
 
 ```bash
@@ -75,25 +86,31 @@ echo "Hi from file 3! Inside nested directory" > test_data/nested/file3.txt
 
 littlefs-python create test_data test.img --block-size 4096 --block-count 16
 ```
-
-#### How to Use Existing Images 
-Using existing may be more challenging, since the tool requires some metadata to work; block size and block count (number of blocks). These values are not stored in the image itself and must match exactly for the tools to work properly. Hence, it is required that the user has some knowledge of the provided filesystem. This may not be the best solution, but the best I could do for this project. 
-
-These values may be available from device firmware or datasheets, embedded firmware source code, or from image creation scripts used in the original development. 
-
-When the block size and block count is known, the tool can be used as intended. 
-
-### CLI Commands
-
+ 
+### CLI Features
 There are three possible features: 
-- Listing files and directories: --list
-- Printing data-structure information: --struct
-- Recovering deleted files: --recover
 
-The commands for the features are given below. As previously stated, it is vital to provide the block size and block count of the filesystem image. 
+| Feature      | Command Flag | Description                          |
+|--------------|--------------|--------------------------------------|
+| List files   | `--list`     | Recursively print files/directories  |
+| Print layout | `--struct`   | Show filesystem structure and blocks |
+| Recover files| `--recover`  | Try to recover deleted files         |
+
+#### Default Values
+
+The CLI commands for the features are given below. As previously stated, it is vital to provide the block_size, block_count read_size and prog_size of the filesystem image. If these are not provided, the tool will use some default values, which may or may not be correct. If not correct, the tool will not be able to mount the image, at least not correctly. 
+
+| Option       | Default Value |
+|--------------|---------------|
+| block_size   | 16            |
+| block_count  | 4096          |
+| read_size    | 16            |
+| prog_size    | 16            |
+
 
 #### Compiling Files
-Before using the feature, the files must be compiled.
+Before using the tool, make sure the compiled binaries (`littlefs_list`, `littlefs_struct`, `littlefs_recover`) are either in the root project directory or accessible from your system's PATH, since the Python CLI uses them as subprocesses.
+
 
 ```bash
 gcc littlefs_list.c lfs.c lfs_util.c -o littlefs_list
@@ -106,20 +123,23 @@ gcc littlefs_recover.c lfs.c lfs_util.c -o littlefs_recover
 The --list feature lists files and directories. 
 
 ```bash
-python main.py <image_file> --list --block-size <block_size> --block-count <block_count>
+python3 main.py <image_file> --list [--block-size <block_size>] [--block-count <block_count>] [--read-size <read_size>] [--prog-size <prog_size>]
 ```
 
 #### --struct
 The --struct feature allows the program to print: filesystem configuration, files and directories, block usage summary, and raw hex dump of blocks. With the --dump-blocks option, the user can specify the number of blocks to be dumped (dump_size). Without the option, the default is 8 blocks. 
 
 ```bash
-python main.py <image_file> --struct --block-size <block_size> --block-count <block_count>
-python main.py <image_file> --struct --block-size <block_size> --block-count <block_count> --dump-blocks <dump_size>
+python3 main.py <image_file> --struct [--block-size <block_size>] [--block-count <block_count>] [--read-size <read_size>] [--prog-size <prog_size>] [--dump-blocks <dump_size>]
 ```
 
 #### --recover
 The --recover feature tries to recover deleted files, if possible. 
 
 ```bash
-python main.py <image_file> --recover --block-size <block_size> --block-count <block_count>
+python3 main.py <image_file> --recover [--block-size <block_size>] [--block-count <block_count>] [--read-size <read_size>] [--prog-size <prog_size>]
 ```
+
+### Troubleshooting
+- `Failed to mount filesystem`: Double-check that your block size and block count are correct.
+- `Segmentation fault`: Check that your image file is valid and matches the provided parameters.
