@@ -136,7 +136,7 @@ python3 main.py <image_file> --list [--block-size <block_size>] [--block-count <
 ```
 
 #### --struct
-The --struct feature allows the program to print: filesystem configuration, files and directories, block usage summary, and raw hex dump of blocks. With the --dump-blocks option, the user can specify the number of blocks to be dumped (dump_size). Without the option, the default is 8 blocks. 
+The --struct feature allows the program to print: superblock information, filesystem configuration, files and directories, block usage summary, and raw hex dump of blocks. With the --dump-blocks option, the user can specify the number of blocks to be dumped (dump_size). Without the option, the default is 8 blocks. 
 
 ```bash
 python3 main.py <image_file> --struct [--block-size <block_size>] [--block-count <block_count>] [--read-size <read_size>] [--prog-size <prog_size>] [--dump-blocks <dump_size>]
