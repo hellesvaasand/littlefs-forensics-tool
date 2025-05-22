@@ -21,18 +21,18 @@ int user_read(const struct lfs_config *c, lfs_block_t block,
 
 int user_prog(const struct lfs_config *c, lfs_block_t block,
               lfs_off_t off, const void *buffer, lfs_size_t size) {
-    return LFS_ERR_IO; // Read-only mode
+    return LFS_ERR_IO;
 }
 
 int user_erase(const struct lfs_config *c, lfs_block_t block) {
-    return LFS_ERR_IO; // Read-only mode
+    return LFS_ERR_IO; 
 }
 
 int user_sync(const struct lfs_config *c) {
     return 0;
 }
 
-void walk_dir(lfs_t *lfs, const char *path) {
+void traverse_directory(lfs_t *lfs, const char *path) {
     struct lfs_info info;
     lfs_dir_t dir;
 
@@ -40,7 +40,7 @@ void walk_dir(lfs_t *lfs, const char *path) {
         printf("[!] Failed to open directory: %s\n", path);
         return;
     }
-
+    
     printf("DIR: %s\n", path);
     while (lfs_dir_read(lfs, &dir, &info) > 0) {
         if (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0)
@@ -53,7 +53,7 @@ void walk_dir(lfs_t *lfs, const char *path) {
         if (info.type == LFS_TYPE_REG) {
             printf("   FILE: %s\n", full_path);
         } else if (info.type == LFS_TYPE_DIR) {
-            walk_dir(lfs, full_path);
+            traverse_directory(lfs, full_path);
         }
     }
 
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    walk_dir(&lfs, "/");
+    traverse_directory(&lfs, "/");
 
     lfs_unmount(&lfs);
     free(image);

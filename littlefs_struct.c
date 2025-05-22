@@ -37,7 +37,7 @@ int user_sync(const struct lfs_config *c) {
     return 0;
 }
 
-void mark_used_blocks_by_content(int block_size, int block_count) {
+void mark_used_blocks(int block_size, int block_count) {
     for (int i = 0; i < block_count; i++) {
         bool is_blank = true;
         for (int j = 0; j < 16; j++) {
@@ -50,7 +50,7 @@ void mark_used_blocks_by_content(int block_size, int block_count) {
     }
 }
 
-void print_block_summary(int block_count) {
+void print_block_usage(int block_count) {
     printf("\nBlock Usage Summary:\n");
     printf("  Used blocks: ");
     for (int i = 0; i < block_count; i++) {
@@ -107,7 +107,7 @@ void dump_blocks(int block_size, int block_count) {
 }
 
 
-void walk_dir(lfs_t *lfs, const char *path) {
+void traverse_directory(lfs_t *lfs, const char *path) {
     struct lfs_info info;
     lfs_dir_t dir;
 
@@ -129,7 +129,7 @@ void walk_dir(lfs_t *lfs, const char *path) {
             printf("  FILE: %s (Size: %lu)\n", full_path, (unsigned long)info.size);
         } else if (info.type == LFS_TYPE_DIR) {
             printf("  DIR: %s\n", full_path);
-            walk_dir(lfs, full_path);
+            traverse_directory(lfs, full_path);
         }
     }
     lfs_dir_close(lfs, &dir);
@@ -144,7 +144,7 @@ uint32_t read_le32(const uint8_t *ptr) {
 }
 
 void print_superblock_info(uint8_t *image, int block_size) {
-    printf("Superblock (tag check in block 0 or 1):\n");
+    printf("Superblock information:\n");
 
     for (int block = 0; block <= 1; block++) {
         const uint8_t *block_data = image + block * block_size;
@@ -251,10 +251,10 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    walk_dir(&lfs, "/");
+    traverse_directory(&lfs, "/");
 
-    mark_used_blocks_by_content(block_size, block_count);
-    print_block_summary(block_count);
+    mark_used_blocks(block_size, block_count);
+    print_block_usage(block_count);
     dump_blocks(block_size, dump_size);
 
     lfs_unmount(&lfs);

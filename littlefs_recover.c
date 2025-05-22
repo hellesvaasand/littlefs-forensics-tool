@@ -41,7 +41,7 @@ int user_sync(const struct lfs_config *c) {
     return 0;
 }
 
-void walk_and_mark(lfs_t *lfs, const char *path) {
+void traverse_directory(lfs_t *lfs, const char *path) {
     struct lfs_info info;
     lfs_dir_t dir;
 
@@ -68,7 +68,7 @@ void walk_and_mark(lfs_t *lfs, const char *path) {
                 lfs_file_close(lfs, &file);
             }
         } else if (info.type == LFS_TYPE_DIR) {
-            walk_and_mark(lfs, full_path);
+            traverse_directory(lfs, full_path);
         }
     }
 
@@ -89,7 +89,7 @@ void dump_block_to_file(int block_index, const uint8_t *block_data, int block_si
     }
 }
 
-void dump_block_data(int block_index, const uint8_t *block_data, int block_size) {
+void dump_block_to_terminal(int block_index, const uint8_t *block_data, int block_size) {
     printf("\nOrphaned block %d:\n", block_index);
 
     bool printable = true;
@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
 
     lfs_t lfs;
     if (lfs_mount(&lfs, &cfg) == 0) {
-        walk_and_mark(&lfs, "/");
+        traverse_directory(&lfs, "/");
         lfs_unmount(&lfs);
     } else {
         fprintf(stderr, "[!] Failed to mount image.\n");
@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
             }
         }
         if (!blank) {
-            dump_block_data(i, &image[i * block_size], block_size);
+            dump_block_to_terminal(i, &image[i * block_size], block_size);
         }
     }
 

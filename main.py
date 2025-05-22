@@ -1,8 +1,7 @@
-# main.py
 import argparse
 from fs_analyzer import list_files, print_structures, recover_deleted
 
-
+# Create a command line interface
 def main():
     parser = argparse.ArgumentParser(description="LittleFS Forensics Tool")
     parser.add_argument("image", help="Path to the LittleFS image file")
