@@ -11,7 +11,16 @@ This README explains how to set up and use the tool.
 - A LittleFS image file (e.g., `image.img`)
 - A C compiler (e.g., gcc)
 
----
+
+## Acknowledgments
+
+This project uses portions of [LittleFS](https://github.com/littlefs-project/littlefs) by Arm Limited,  
+which is licensed under the BSD-3-Clause License. See `lfs.c`, `lfs.h`, `lfs_util.c`, and `lfs_util.h`.
+
+BSD-3-Clause License © 2017 Arm Limited.
+
+For license details, see `littlefs_LICENSE`.
+
 
 ## Installation
 
