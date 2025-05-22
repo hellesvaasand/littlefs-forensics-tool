@@ -149,6 +149,20 @@ The --recover feature tries to recover deleted files, if possible.
 python3 main.py <image_file> --recover [--block-size <block_size>] [--block-count <block_count>] [--read-size <read_size>] [--prog-size <prog_size>]
 ```
 
+#### Injecting Content for Testing
+The inject_content.py script is intended for testing purposes only. It allows you to manually inject custom data into a specific block of a LittleFS image file without registering it in the file directory. This simulates the presence of deleted or orphaned data, which is useful for verifying that the --recover feature works as expected.
+
+To use the script, you must manually modify it to:
+- Choose the target image file
+- Specify the block number to inject into (must be unused)
+- Define the content you want to write
+
+This script is not part of the core CLI tool and should only be used to facilitate controlled test scenarios where deleted files are not otherwise available.
+
+```bash
+python3 inject_content.py
+```
+
 ### Troubleshooting
 - `Failed to mount filesystem`: Double-check that your block size and block count are correct.
 - `Segmentation fault`: Check that your image file is valid and matches the provided parameters.
